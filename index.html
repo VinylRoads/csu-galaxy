@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="ru" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+
+<title>Галактика расписаний ЧелГУ</title>
+<meta name="description" content="Интерактивная карта расписаний. Найди свою группу среди звезд!">
+<meta property="og:title" content="Галактика расписаний ЧелГУ">
+<meta property="og:description" content="Удобный поиск и визуализация расписания в космическом стиле.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://csu.kz/preview.jpg"> 
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Manrope:wght@400;700;800&display=swap" rel="stylesheet">
+
+
+
+<style>
+
+html,body{
+margin:0;
+overflow:hidden;
+background:#020617;
+height:100%;
+font-family:Arial;
+touch-action:none;
+}
+
+body::before{
+
+content:"";
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+
+background:
+radial-gradient(circle at 50% 50%,rgba(59,130,246,.15),transparent 55%),
+radial-gradient(circle at 60% 45%,rgba(236,72,153,.12),transparent 60%),
+radial-gradient(circle at 40% 60%,rgba(34,197,94,.10),transparent 60%),
+radial-gradient(circle at 50% 50%,rgba(99,102,241,.08),transparent 70%);
+
+/* filter:blur(40px) url(#spaceNoise); */
+
+pointer-events:none;
+}
+
+#galaxy{
+position:fixed;
+top:0;
+left:0;
+width:100vw;
+height:100%;
+}
+
+#planets{
+position:fixed;
+top:0;
+left:0;
+width:100vw;
+height:100dvh;
+pointer-events:none;
+transform-origin:center center;
+}
+
+#search {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    border-radius: 30px;
+    /* Тонкая светлая граница для эффекта грани стекла */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: min(320px, 85vw);
+    z-index: 100;
+    font-size: 16px;
+    
+    /* ОЧЕНЬ прозрачный фон, чтобы блюр был виден (0.15) */
+    background: rgba(255, 255, 255, 0.05); 
+    color: #fff;
+    outline: none;
+    
+    /* Убираем тяжелые тени, оставляем легкое свечение */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    
+    transition: all 0.3s ease;
+    text-align: center;
+
+    /* Усиленное размытие */
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
+}
+
+
+
+#search::placeholder {
+color:rgba(255,255,255,0.4);
+transition:0.3s;
+}
+
+#search:focus {
+box-shadow:0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(59,130,246,0.4);
+border:1px solid rgba(59,130,246,0.5);
+background:rgba(17,24,39,0.95);
+text-align:left; /* При вводе текст уходит влево */
+}
+
+#search:focus::placeholder {
+opacity:0; /* Прячем подсказку при клике */
+}
+
+
+.planet {
+    position: absolute;
+    border-radius: 50%;
+    background-blend-mode: overlay;
+    background-image:
+        radial-gradient(circle at 30% 30%,rgba(255,255,255,.3),transparent 45%),
+        radial-gradient(circle at 70% 60%,rgba(0,0,0,.4),transparent 65%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+        padding: 6px;
+    color: #fff;
+    /* Manrope — современный, геометричный и необычный */
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: clamp(10px, 2.6vw, 13px); 
+    letter-spacing: -0.01em;
+
+
+    text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
+    cursor: pointer;
+    pointer-events: auto;
+    will-change: transform; 
+    backface-visibility: hidden;
+    z-index: 10;
+    box-shadow: inset -8px -12px 18px rgba(0,0,0,.6), inset 6px 8px 14px rgba(255,255,255,.15), 0 0 12px rgba(255,210,120,.25), 0 0 35px rgba(255,140,40,.2), 0 0 80px rgba(255,80,30,.12);
+}
+
+
+ 
+.planet:hover{
+/* Трансформацией теперь плавно управляет JS, оставили только свечение */
+box-shadow:
+0 0 14px rgba(255,255,255,.4),
+0 0 25px rgba(59,130,246,.35);
+}
+
+.rock {
+    background:
+        /* Кратеры */
+        radial-gradient(circle at 20% 30%, rgba(0,0,0,0.5) 0%, transparent 12%),
+        radial-gradient(circle at 65% 60%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.6) 10%, transparent 18%),
+        radial-gradient(circle at 80% 30%, rgba(0,0,0,0.4) 0%, transparent 10%),
+        /* Основная поверхность */
+        radial-gradient(circle at 30% 25%, #d6d3d1 0%, #78716c 40%, #292524 75%, #0a0a0a 100%);
+}
+
+.ice {
+    background:
+        /* Ледяные трещины и блики */
+        linear-gradient(60deg, transparent 30%, rgba(255,255,255,0.4) 32%, transparent 34%),
+        linear-gradient(-45deg, transparent 50%, rgba(255,255,255,0.2) 52%, transparent 54%),
+        /* Основная поверхность */
+        radial-gradient(circle at 35% 25%, #e0f2fe 0%, #7dd3fc 35%, #0284c7 70%, #020617 100%);
+}
+
+.gas {
+    background:
+        /* Гигантский шторм (как на Юпитере) */
+        radial-gradient(ellipse at 40% 50%, rgba(234, 88, 12, 0.6) 0%, transparent 20%),
+        /* Атмосферные полосы */
+        repeating-linear-gradient(
+            185deg,
+            rgba(0,0,0,0) 0%,
+            rgba(0,0,0,0.1) 8%,
+            rgba(0,0,0,0.15) 10%,
+            rgba(255,255,255,0.1) 15%,
+            rgba(255,255,255,0) 20%
+        ),
+        /* Основная поверхность */
+        radial-gradient(circle at 30% 25%, #fde047 0%, #f97316 45%, #9a3412 75%, #2a0a00 100%);
+}
+
+.lava {
+    background:
+        /* Пульсирующие очаги магмы */
+        radial-gradient(circle at 30% 60%, rgba(253, 224, 71, 0.8) 0%, transparent 15%),
+        /* Разломы */
+        linear-gradient(45deg, transparent 20%, rgba(253, 224, 71, 0.5) 22%, rgba(239, 68, 68, 0.8) 24%, transparent 26%),
+        /* Основная поверхность */
+        radial-gradient(circle at 30% 25%, #ef4444 0%, #991b1b 40%, #450a0a 75%, #000 100%);
+}
+
+/* === Анимации вращения и переливов === */
+@keyframes rockSpin {
+    0% { background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%; }
+    100% { background-position: 200% 50%, -100% 100%, 100% -50%, 0% 0%; }
+}
+@keyframes iceGlisten {
+    0% { background-position: -100% -100%, 200% 200%, 0% 0%; }
+    100% { background-position: 200% 200%, -100% -100%, 0% 0%; }
+}
+@keyframes gasFlow {
+    0% { background-position: 200% 50%, -100% 0%, 0% 0%; }
+    100% { background-position: -100% 50%, 200% 0%, 0% 0%; }
+}
+@keyframes lavaMove {
+    0% { background-position: 0% 0%, 100% 100%, 0% 0%; }
+    100% { background-position: 100% 100%, 0% 0%, 0% 0%; }
+}
+
+
+.blackhole{
+/* Делаем её реально черной и перебиваем фон обычных планет */
+background: #000 !important; 
+box-shadow:
+0 0 15px rgba(255,255,255,.4),
+0 0 40px rgba(255,120,40,.7),
+0 0 100px rgba(255,60,20,.5) !important;
+border: 1px solid rgba(255,120,40,.3); /* Легкая подсветка горизонта событий */
+}
+
+.blackhole::before{
+content:"";
+position:absolute;
+left:50%;
+top:50%;
+width:240%; /* Делаем диск чуть шире */
+height:60%;
+transform:translate(-50%,-50%) rotate(20deg);
+border-radius:50%;
+background:
+radial-gradient(circle,
+rgba(255,230,150,.9),
+rgba(255,140,60,.7),
+rgba(255,80,20,.3),
+transparent 70%
+);
+filter:blur(4px);
+animation:accretionGlow 4s ease-in-out infinite;
+z-index:-1; /* Прячем диск ЗА черную дыру, чтобы текст был читаем! */
+}
+
+.highlight{
+
+scale:1.35;
+z-index:100 !important; /* Искомая планета гарантированно поверх остальных! */
+
+box-shadow:
+0 0 10px rgba(255,255,255,.8),
+0 0 20px rgba(255,210,120,.8),
+0 0 50px rgba(255,150,40,.7),
+0 0 110px rgba(255,60,20,.45);
+
+}
+
+@keyframes sunPulse{
+
+0%{
+filter:
+drop-shadow(0 0 6px #ffffff)
+drop-shadow(0 0 12px #ffe8a3)
+drop-shadow(0 0 28px rgba(255,160,40,.65))
+drop-shadow(0 0 65px rgba(255,70,20,.35));
+}
+
+50%{
+filter:
+drop-shadow(0 0 10px #ffffff)
+drop-shadow(0 0 18px #ffe8a3)
+drop-shadow(0 0 42px rgba(255,150,35,.75))
+drop-shadow(0 0 90px rgba(255,60,20,.45));
+}
+
+100%{
+filter:
+drop-shadow(0 0 6px #ffffff)
+drop-shadow(0 0 12px #ffe8a3)
+drop-shadow(0 0 28px rgba(255,160,40,.65))
+drop-shadow(0 0 65px rgba(255,70,20,.35));
+}
+
+
+}
+
+@keyframes starPulse{
+
+0%{
+opacity:.5;
+transform:scale(.9);
+}
+
+50%{
+opacity:1;
+transform:scale(1.3);
+}
+
+100%{
+opacity:.5;
+transform:scale(.9);
+}
+
+}
+
+.big-star{
+animation:starPulse 6s infinite ease-in-out;
+transform-origin:center;
+}
+
+@keyframes accretionGlow{
+
+0%{
+opacity:.7;
+filter:blur(6px);
+}
+
+50%{
+opacity:1;
+filter:blur(9px);
+}
+
+100%{
+opacity:.7;
+filter:blur(6px);
+}
+
+}
+
+
+/* === ДАЛЕКОЕ СОЛНЦЕ В ФОНЕ === */
+#distant-sun {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #fbbf24;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    pointer-events: none; /* Прозрачно для кликов в центре */
+    z-index: 5; /* Ниже планет (у них 10), чтобы они летали поверх Солнца! */
+    animation: sunPulse 5s infinite; 
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Делаем текст красивым полупрозрачным силуэтом */
+    color: rgba(2, 6, 23, 0.35); 
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+#distant-sun.visible {
+    opacity: 0.95; 
+    top: 30%; 
+    left: 28%; 
+    transform: translate(-50%, -50%) scale(0.6); 
+    transition: all 0.5s cubic-bezier(0.34, 1.3, 0.64, 1);
+    pointer-events: auto; /* Кликабельно только когда улетело в угол */
+    cursor: pointer;
+}
+
+
+
+
+
+/* === Спутники-подсказки (луны) === */
+.satellites-ring {
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 140%; /* Орбита чуть шире самой планеты */
+    height: 140%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.15); /* Еле заметная линия орбиты */
+}
+
+.satellite {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #bfdbfe; /* Светло-голубой цвет луны */
+    border-radius: 50%;
+    box-shadow: 0 0 6px #60a5fa, 0 0 12px #3b82f6; /* Эффект свечения */
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spinRing {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* === Спутники-подсказки (луны) === */
+.satellites-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 140%; /* Орбита чуть шире самой планеты */
+    height: 140%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.15); /* Еле заметная линия орбиты */
+}
+
+.satellite {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #bfdbfe; /* Светло-голубой цвет луны */
+    border-radius: 50%;
+    box-shadow: 0 0 6px #60a5fa, 0 0 12px #3b82f6; /* Эффект свечения */
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spinRing {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+#orbits{
+position:fixed;
+top:0;
+left:0;
+width:100vw;
+height:100%;
+pointer-events:none;
+transform-origin:center center; /* Разрешаем орбитам зумиться вместе с галактикой */
+}
+
+/* Анимация "бегущих" пунктиров по орбитам */
+@keyframes orbitFlow {
+    from { stroke-dashoffset: 8; }
+    to { stroke-dashoffset: 0; }
+}
+
+.orbit{
+fill:none;
+stroke:rgba(255,255,255,.12);
+stroke-width:1;
+stroke-dasharray:2 6;
+opacity:.6;
+animation: orbitFlow 3s linear infinite; /* Запускаем поток */
+}
+
+#dust{
+position:fixed;
+top:0;
+left:0;
+width:100vw;
+height:100%;
+pointer-events:none;
+mix-blend-mode:screen;
+opacity:.45;
+}
+
+#planets {
+position:fixed;
+top:0;
+left:0;
+width:100vw;
+height:100%;
+pointer-events:none;
+transform-origin:center center;
+z-index: 10; /* Группы всегда выше центральной планеты */
+}
+
+.dust-cloud{
+fill:url(#dustGradient);
+filter:blur(60px);
+}
+
+#signature {
+    position: fixed;
+    bottom: 45px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    font-family: 'Orbitron', Arial, sans-serif;
+    font-size: 9px; /* Уменьшили шрифт */
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 90;
+    pointer-events: auto; 
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    transition: all 0.4s ease;
+    width: 100%;
+    text-align: center;
+    cursor: default;
+}
+
+#signature .dot {
+    color: rgba(255, 255, 255, 0.3);
+    margin: 0 6px;
+}
+
+#signature .author {
+    font-weight: bold;
+    /* Тот самый градиент в золотисто-оранжевых тонах */
+    background: linear-gradient(to right, #fbbf24, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* Тень оставляем, чтобы текст светился на фоне космоса */
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.3); 
+    transition: all 0.4s ease;
+    display: inline-block;
+}
+
+@media (hover: hover) {
+    #signature:hover {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    #signature:hover .author {
+        /* При наведении делаем градиент ярче, уходя в белое золото */
+        background: linear-gradient(to right, #fde047, #fbbf24);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 15px rgba(251, 191, 36, 0.8), 0 0 30px rgba(255, 255, 255, 0.6);
+        transform: scale(1.05);
+    }
+}
+
+
+
+/* Анимации оптимизированы, пауза больше не нужна */
+
+
+
+</style>
+</head>
+
+<body>
+
+ <input id="search" placeholder="Поиск группы...">
+<div id="signature">Галактика расписаний v1.7.3 <span class="dot">•</span> <span class="author">VinylRoads</span></div>
+
+<div id="distant-sun">ЧелГУ</div>
+
+<svg id="galaxy"></svg>
+<svg id="dust"></svg>
+<svg id="orbits"></svg>
+<div id="planets"></div>
+
+<div id="files" style="
+position:fixed;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+background:#111827;
+padding:14px 18px;
+border-radius:12px;
+color:white;
+max-width:420px;
+display:none;
+z-index:200;
+"></div>
+
+<div id="pdf-container" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:none; flex-direction:column; z-index:300;">
+    <div style="background:#111827; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div id="pdf-title" style="color:white; font-family:'Orbitron', Arial, sans-serif; font-weight:bold; font-size:16px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:60%;">Расписание</div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <a id="pdf-download" href="#" target="_blank" style="color:#60a5fa; text-decoration:none; font-size:14px;">Открыть отдельно</a>
+            <div id="pdf-close" style="color:#f87171; cursor:pointer; font-weight:bold; font-size:16px;">✕ Закрыть</div>
+        </div>
+    </div>
+    <iframe id="viewer" style="flex-grow:1; border:none; width:100%; background:#fff;"></iframe>
+</div>
+
+<script>
+
+const pdfContainer = document.getElementById("pdf-container");
+const viewer = document.getElementById("viewer");
+const pdfTitle = document.getElementById("pdf-title");
+const pdfDownload = document.getElementById("pdf-download");
+
+function openPDF(file){
+    // encodeURIComponent страхует нас от проблем, если диспетчер добавит спецсимволы вроде # или %
+    let url = "Расписание/" + encodeURIComponent(file);
+    let prettyName = file.replace(/_/g, " ").replace(/\.pdf$/i, "");
+
+    // Скрываем плашку со списком файлов
+    document.getElementById("files").style.display = "none";
+
+    // Проверка на мобильные устройства
+    let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+        // На мобилках отдаем файл системе (новая вкладка работает идеально)
+        window.open(url, '_blank');
+    } else {
+        // На ПК показываем внутри Галактики с красивой шапкой
+        pdfTitle.textContent = prettyName;
+        pdfDownload.href = url;
+        viewer.src = url;
+        pdfContainer.style.display = "flex";
+    }
+}
+
+// Кнопка закрытия
+document.getElementById("pdf-close").addEventListener("click", function(){
+    pdfContainer.style.display = "none";
+    viewer.src = "";
+});
+
+window.addEventListener("keydown", e => {
+    if(e.key === "Escape"){
+        pdfContainer.style.display = "none";
+        viewer.src = "";
+    }
+});
+
+let directions = {}
+let schedule = {}
+let planets = []
+let rings = []
+let mode = "directions"
+
+// Используем Date.now() для 100% обхода кэширования на всех устройствах
+fetch("schedule.json?v=" + Date.now(), {cache: "no-store"})
+.then(r => r.json())
+.then(data=>{
+schedule = data
+})
+
+function showFiles(group){
+
+let files = schedule[group]
+
+if(!files) return
+
+let box = document.getElementById("files")
+box.style.display="block"
+
+box.innerHTML=""
+
+let title=document.createElement("b")
+title.textContent=group
+box.appendChild(title)
+
+box.appendChild(document.createElement("br"))
+box.appendChild(document.createElement("br"))
+
+files.forEach(f=>{
+
+let div=document.createElement("div")
+
+div.style.margin="6px 0"
+div.style.cursor="pointer"
+div.style.color="#60a5fa"
+
+// Убираем подчеркивания и расширение .pdf для красоты
+let prettyName = f.replace(/_/g, " ").replace(/\.pdf$/i, "");
+div.textContent = prettyName;
+
+div.onclick=()=>openPDF(f)
+
+box.appendChild(div)
+
+})
+
+let close=document.createElement("div")
+close.textContent="закрыть"
+
+close.style.marginTop="10px"
+close.style.color="#aaa"
+close.style.cursor="pointer"
+
+close.onclick=()=>box.style.display="none"
+
+box.appendChild(close)
+
+}
+
+fetch("groups.json?" + Date.now())
+.then(r => r.json())
+.then(data => {
+
+directions = data
+createPlanets(Object.keys(directions))
+
+})
+
+const svg=document.getElementById("galaxy")
+const dust=document.getElementById("dust")
+const orbitLayer=document.getElementById("orbits")
+const dustLayer = document.getElementById("dust")
+const container=document.getElementById("planets")
+container._tx = 0
+container._ty = 0
+const searchInput=document.getElementById("search")
+
+let w=window.innerWidth
+let h=window.innerHeight
+
+let cx=w/2
+let cy=h/2
+
+
+
+function updateSize(){
+
+w=window.innerWidth
+h=window.innerHeight
+
+// ЖЕСТКО ФИКСИРУЕМ ВЫСОТУ В ПИКСЕЛЯХ
+
+document.body.style.height = h + "px";
+svg.style.height = h + "px";
+dust.style.height = h + "px";
+orbitLayer.style.height = h + "px";
+container.style.height = h + "px";
+
+cx=w/2
+cy=h/2
+
+svg.setAttribute("viewBox",`0 0 ${w} ${h}`)
+
+dust.innerHTML=""
+createDust()
+}
+
+let lastWidth = window.innerWidth
+let lastHeight = window.innerHeight
+
+window.addEventListener("resize",()=>{
+
+let newW = window.innerWidth
+let newH = window.innerHeight
+
+
+if(newW === lastWidth){
+lastHeight = newH
+return
+}
+
+lastWidth = newW
+lastHeight = newH
+
+updateSize()
+
+if(mode==="directions")
+createPlanets(Object.keys(directions))
+else
+createPlanets(directions[label.textContent])
+
+})
+
+const types=["rock","ice","gas","lava"]
+
+function typeFromName(name){
+let n=0
+for(let i=0;i<name.length;i++) n+=name.charCodeAt(i)
+return types[n%types.length]
+}
+
+// === УМНЫЙ ЦЕНТР ГАЛАКТИКИ ===
+let centralPlanet = document.createElement("div");
+centralPlanet.style.position = "absolute"; 
+centralPlanet.style.left = "50%";
+centralPlanet.style.top = "50%";
+centralPlanet.style.transform = "translate(-50%, -50%)";
+centralPlanet.style.cursor = "default";
+centralPlanet.style.zIndex = "10"; 
+
+
+container.appendChild(centralPlanet);
+
+
+
+let label = { textContent: "ЧелГУ" }; // Сохраняем переменную для логики скрипта
+
+function updateCenter(name) {
+    label.textContent = name;
+    centralPlanet.innerText = name;
+    
+    let distantSun = document.getElementById("distant-sun"); 
+    
+    if (name === "ЧелГУ") {
+        // МОМЕНТАЛЬНЫЙ ВОЗВРАТ
+        centralPlanet.style.transition = "none";
+        distantSun.classList.remove("visible"); 
+        
+                centralPlanet.className = "planet"; 
+        centralPlanet.style.width = "72px"; 
+        centralPlanet.style.height = "72px"; // Теперь снова круглое!
+
+        centralPlanet.style.background = "#fbbf24";
+
+        centralPlanet.style.boxShadow = "none"; 
+        // Полупрозрачный темный силуэт (0.6 — это 60% видимости)
+        centralPlanet.style.color = "rgba(2, 6, 23, 0.6)"; 
+        centralPlanet.style.animation = "sunPulse 4s infinite";
+        
+        centralPlanet.style.textShadow = "none"; 
+        centralPlanet.style.fontSize = "16px";
+        centralPlanet.style.fontFamily = "'Manrope', sans-serif";
+        centralPlanet.style.fontWeight = "800";
+        centralPlanet.style.letterSpacing = "0.5px";
+       } else {
+        // ПЛАВНОЕ ПОГРУЖЕНИЕ
+        centralPlanet.style.transition = "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
+        distantSun.classList.add("visible"); 
+        
+        let planetStyle = window.facultyStyles && window.facultyStyles[name] ? window.facultyStyles[name] : ("planet " + typeFromName(name));
+
+        centralPlanet.className = planetStyle;
+        centralPlanet.style.width = "64px"; 
+        centralPlanet.style.height = "64px";
+        centralPlanet.style.background = ""; 
+        centralPlanet.style.boxShadow = ""; 
+        centralPlanet.style.color = "#fff"; 
+        centralPlanet.style.animation = "none";
+        
+        centralPlanet.style.textShadow = ""; 
+        centralPlanet.style.fontSize = "";
+        centralPlanet.style.fontWeight = "";
+        centralPlanet.style.letterSpacing = "";
+    }
+}
+
+
+
+updateCenter("ЧелГУ");
+
+let starLayer=document.createElementNS("http://www.w3.org/2000/svg","g")
+svg.appendChild(starLayer)
+
+// ===== ГАЛАКТИЧЕСКАЯ ПЫЛЬ =====
+
+let defs=document.createElementNS("http://www.w3.org/2000/svg","defs")
+
+let noiseFilter=document.createElementNS("http://www.w3.org/2000/svg","filter")
+noiseFilter.setAttribute("id","spaceNoise")
+
+noiseFilter.innerHTML=`
+<feTurbulence 
+type="fractalNoise"
+baseFrequency="0.9"
+numOctaves="2"
+stitchTiles="stitch"
+/>
+<feColorMatrix
+type="saturate"
+values="0"
+/>
+<feComponentTransfer>
+<feFuncA type="linear" slope="0.04"/>
+</feComponentTransfer>
+`
+
+defs.appendChild(noiseFilter)
+
+let gradient=document.createElementNS("http://www.w3.org/2000/svg","radialGradient")
+gradient.setAttribute("id","dustGradient")
+
+gradient.innerHTML=`
+<stop offset="0%" stop-color="rgba(255,180,90,.35)"/>
+<stop offset="40%" stop-color="rgba(255,120,60,.25)"/>
+<stop offset="80%" stop-color="rgba(255,60,30,.12)"/>
+<stop offset="100%" stop-color="transparent"/>
+`
+
+defs.appendChild(gradient)
+dust.appendChild(defs)
+
+function createDust(){
+
+let arms = 3
+let base = Math.min(w,h)
+
+for(let arm=0; arm<arms; arm++){
+
+for(let i=0;i<8;i++){
+
+let t = i/8
+
+let angle =
+arm*(Math.PI*2/arms) +
+t*4
+
+let radius =
+base*0.08 +
+t*base*0.42
+
+let x = cx + Math.cos(angle)*radius
+let y = cy + Math.sin(angle)*radius
+
+let cloud=document.createElementNS("http://www.w3.org/2000/svg","ellipse")
+
+cloud.setAttribute("cx",x)
+cloud.setAttribute("cy",y)
+
+cloud.setAttribute("rx",base*(0.06 + t*0.04))
+cloud.setAttribute("ry",base*(0.025 + t*0.02))
+
+cloud.setAttribute("class","dust-cloud")
+
+cloud.setAttribute(
+"transform",
+`rotate(${angle*180/Math.PI} ${x} ${y})`
+)
+
+dust.appendChild(cloud)
+
+}
+
+}
+
+}
+
+
+updateSize()
+
+let starList=[]
+
+function stars(count,size,opacity){
+
+for(let i=0;i<count;i++){
+
+let s=document.createElementNS("http://www.w3.org/2000/svg","circle")
+
+// Кэшируем параметры в самом объекте
+s._x = Math.random()*w;
+s._o = opacity;
+s._parallax = (i % 3) * 0.02;
+
+s.setAttribute("cx", s._x)
+s.setAttribute("cy",Math.random()*h)
+s.setAttribute("r",Math.random()*size)
+let colors=[
+"#ffffff",
+"#ffe9a3",
+"#fff6d6",
+"#cfe9ff"
+]
+
+s.setAttribute(
+"fill",
+colors[Math.floor(Math.random()*colors.length)]
+)
+s.setAttribute("opacity", s._o)
+
+starLayer.appendChild(s)
+starList.push(s)
+
+}
+
+}
+
+stars(200,1,.4)
+stars(120,1.5,.7)
+stars(60,2,1)
+
+function bigStars(){
+
+for(let i=0;i<12;i++){
+
+let s=document.createElementNS("http://www.w3.org/2000/svg","circle")
+
+s.setAttribute("cx",Math.random()*w)
+s.setAttribute("cy",Math.random()*h)
+
+s.setAttribute("r",3 + Math.random()*2)
+
+s.setAttribute("fill","#ffffff")
+
+s.setAttribute("class","big-star")
+
+starLayer.appendChild(s)
+
+}
+
+}
+
+bigStars()
+
+let galaxyRotation = 0
+let dustRotation = 0
+
+function createPlanets(list){
+
+if(!list || list.length===0) return
+
+planets.forEach(p=>p.el?.classList.remove("highlight"))
+
+// Аккуратно удаляем всё из контейнера, КРОМЕ нашего Умного Центра
+Array.from(container.children).forEach(child => {
+    if (child !== centralPlanet) child.remove();
+});
+
+orbitLayer.innerHTML=""
+planets=[]
+rings=[]
+
+let blackHoleCreated = false
+
+let armCount = 3
+let base = Math.min(w,h)
+
+list.forEach((name,i)=>{
+
+let perArm = Math.ceil(list.length / armCount)
+
+let arm = i % armCount
+
+let pos = Math.floor(i / armCount)
+
+let t = pos / perArm
+
+let spiral = t * 5
+
+let angle =
+arm * (Math.PI * 2 / armCount) +
+spiral
+
+let maxRadius = base * 0.48
+
+let radius
+
+if(mode === "directions") {
+    // Равномерная спираль для факультетов
+    radius = base * 0.2 + (i / list.length) * (base * 0.35);
+} else {
+    // Группы: увеличиваем стартовый отступ от центральной планеты, чтобы они не врезались в неё
+    // Начинаем с 0.18 (было 0.14), даем центру свободное пространство
+    radius = base * 0.18 + (i * (base * 0.035));
+}
+
+// Добавляем сдвиг по углу, чтобы они не выстраивались в ровную линию
+angle = arm * (Math.PI * 2 / armCount) + (i * 0.4);
+
+let orbit=document.createElementNS("http://www.w3.org/2000/svg","circle")
+
+orbit.setAttribute("cx",cx)
+orbit.setAttribute("cy",cy)
+orbit.setAttribute("r",radius)
+orbit.setAttribute("class","orbit")
+
+orbitLayer.appendChild(orbit)
+
+
+
+let el=document.createElement("div")
+
+let size
+
+if(mode==="directions"){
+size = Math.max(42,base*0.035)
+}else{
+size = Math.max(18,base*0.018)
+}
+
+// Сохраняем внешний вид, чтобы при клике центр выглядел точно так же
+if (!window.facultyStyles) window.facultyStyles = {};
+
+if (mode === "directions" && window.facultyStyles[name]) {
+    el.className = window.facultyStyles[name];
+} else {
+    if(!blackHoleCreated && Math.random() < 0.18){
+        el.className = "planet blackhole"
+        blackHoleCreated = true
+    }else{
+        el.className = "planet " + types[i % types.length]
+    }
+    
+    if (mode === "directions") window.facultyStyles[name] = el.className;
+}
+
+el.innerText=name
+
+if(el.classList.contains("blackhole")){
+    // Черная дыра визуально чуть больше остальных планет
+    el.style.width = (size * 1.3) + "px"
+    el.style.height = (size * 1.3) + "px"
+} else {
+    // Обычные планеты
+    el.style.width = size + "px"
+    el.style.height = size + "px"
+}
+
+container.appendChild(el)
+
+// === СПУТНИКИ-ПОДСКАЗКИ (1 спутник = 1 группа) ===
+// Делаем это только для факультетов
+if (mode === "directions" && directions[name]) {
+    let groupCount = directions[name].length; // Считаем количество групп
+    
+    // Ограничиваем максимум 24 лунами, чтобы не было слипшейся каши на больших факультетах
+    let maxMoons = Math.min(groupCount, 24); 
+
+    if (maxMoons > 0) {
+        let ring = document.createElement("div");
+        ring.className = "satellites-ring";
+        
+        // Рандомная скорость и направление вращения для каждой планеты
+        let duration = 15 + Math.random() * 15;
+        let dir = Math.random() > 0.5 ? "normal" : "reverse";
+        ring.style.animation = `spinRing ${duration}s linear infinite ${dir}`;
+
+        for (let m = 0; m < maxMoons; m++) {
+            let moon = document.createElement("div");
+            moon.className = "satellite";
+            
+            
+            let moonAngle = (m / maxMoons) * Math.PI * 2;
+            let r = 50; // 50% от ширины кольца (по краю)
+            moon.style.left = (50 + Math.cos(moonAngle) * r) + "%";
+            moon.style.top = (50 + Math.sin(moonAngle) * r) + "%";
+            
+            ring.appendChild(moon);
+        }
+        el.appendChild(ring);
+    }
+}
+
+// Создаем кольца у планет (только 1 на сессию и не у черной дыры)
+let canHaveRing = mode === "directions" && !el.classList.contains("blackhole");
+
+
+if (canHaveRing && (window.planetWithRing === name || (!window.planetWithRing && Math.random() < 0.4))) {
+    window.planetWithRing = name; 
+    
+    let ringAsteroids = [];
+    for(let a=0; a<70; a++){ 
+        let asteroid = document.createElement("div");
+        asteroid.style.position = "absolute";
+        
+       
+        let s = 1.5 + Math.random() * 2.5;
+        asteroid.style.width = s + "px";
+        asteroid.style.height = s + "px";
+        asteroid.style.borderRadius = "50%";
+        
+        
+        let colors = ["#cbd5e1", "#f8fafc", "#94a3b8", "#e2e8f0", "#fbbf24"];
+        asteroid.style.background = colors[Math.floor(Math.random() * colors.length)];
+        asteroid.style.opacity = 0.5 + Math.random() * 0.5; 
+        
+        asteroid.style.willChange = "transform";
+        asteroid.style.backfaceVisibility = "hidden";
+        container.appendChild(asteroid);
+        
+        ringAsteroids.push({
+            el: asteroid,
+            s: s,
+            angle: Math.random() * Math.PI * 2,
+          
+            radius: (size / 2) * 1.6 + Math.random() * (size * 0.35),
+            tilt: 0.25,
+            speed: 0.002 + Math.random() * 0.003
+        });
+    }
+
+    rings.push({
+        planet: el,
+        asteroids: ringAsteroids
+    });
+}
+
+
+
+// Сразу ставим планету на её законную орбиту, чтобы она не появлялась в центре Солнца
+let startX = cx + Math.cos(angle) * radius;
+let startY = cy + Math.sin(angle) * radius;
+el.style.transform = `translate(${startX}px, ${startY}px) translate(-50%, -50%)`;
+el._x = startX;
+el._y = startY;
+
+
+el.addEventListener("pointerenter", () => el._hoverScale = 1.2);
+el.addEventListener("pointerleave", () => el._hoverScale = 1);
+el._hoverScale = 1;
+
+planets.push({
+name,
+el,
+radius,
+angle,
+speed:mode==="directions"
+? 0.00012 + Math.random()*0.00008
+: 0.00035 + Math.random()*0.0002,
+centerX: cx,
+centerY: cy,
+halfSize: size / 2 // Кэшируем половину размера для быстрой отрисовки
+})
+
+})
+
+// === КОЛЬЦО АСТЕРОИДОВ ВОКРУГ ЦЕНТРАЛЬНОЙ ПЛАНЕТЫ ===
+
+if (mode === "groups" && label.textContent === window.planetWithRing) {
+    let ringAsteroids = [];
+    for(let a=0; a<120; a++){ 
+        let asteroid = document.createElement("div");
+        asteroid.style.position = "absolute";
+        
+        let s = 1.5 + Math.random() * 3;
+        asteroid.style.width = s + "px";
+        asteroid.style.height = s + "px";
+        asteroid.style.borderRadius = "50%";
+        
+        let colors = ["#cbd5e1", "#f8fafc", "#94a3b8", "#e2e8f0", "#fbbf24"];
+        asteroid.style.background = colors[Math.floor(Math.random() * colors.length)];
+        asteroid.style.opacity = 0.5 + Math.random() * 0.5;
+        asteroid.style.willChange = "transform";
+        asteroid.style.backfaceVisibility = "hidden";
+        container.appendChild(asteroid);
+        
+        ringAsteroids.push({
+            el: asteroid,
+            s: s,
+            angle: Math.random() * Math.PI * 2,
+            // Физика: кольцо БЛИЖЕ к планете (0.12), чем орбиты групп (начинаются с 0.18)
+            radius: base * 0.12 + Math.random() * (base * 0.025),
+            tilt: 0.25,
+            speed: 0.001 + Math.random() * 0.002
+        });
+    }
+    rings.push({
+        isCentral: true, 
+        asteroids: ringAsteroids
+    });
+}
+
+}
+
+
+
+function resetHome(){
+
+mode="directions"
+
+
+cx = w/2
+cy = h/2
+
+createPlanets(Object.keys(directions))
+
+updateCenter("ЧелГУ");
+
+document.getElementById("files").style.display="none"
+container._tx = 0
+container._ty = 0
+container.style.transform="translate(0px,0px) scale(1)"
+}
+
+function findGroup(query){
+
+query=query.toLowerCase()
+
+let best=null
+let bestDir=null
+let bestScore=0
+
+for(let d in directions){
+
+for(let g of directions[d]){
+
+let gl=g.toLowerCase()
+
+if(gl.includes(query)){
+
+let score=query.length/gl.length
+
+if(score>bestScore){
+best=g
+bestDir=d
+bestScore=score
+}
+
+}
+
+}
+
+}
+
+return {group:best,dir:bestDir}
+
+}
+
+
+
+searchInput.addEventListener("input",function(){
+
+let v=this.value.trim().toLowerCase()
+
+planets.forEach(p=>p.el.classList.remove("highlight"))
+
+if(!v) return
+
+// 1. Сначала ищем по названиям ОБЩИХ ФАЙЛОВ
+let foundInGeneral = false;
+if (schedule["Общие документы"]) {
+    for (let file of schedule["Общие документы"]) {
+        // Очищаем имя файла так же, как при выводе
+        let pretty = file.replace(/_/g, " ").replace(/\.pdf$/i, "").toLowerCase();
+        if (pretty.includes(v)) {
+            foundInGeneral = true;
+            break;
+        }
+    }
+}
+
+
+if (foundInGeneral && mode === "directions") {
+    let p = planets.find(x => x.name === "Общие документы");
+    if (p) {
+        p.el.classList.add("highlight");
+        flyToPlanet(p);
+    }
+    return; 
+}
+
+
+let result=findGroup(v)
+
+if(!result.group) return
+
+if(mode!=="groups" || label.textContent!==result.dir){
+
+mode="groups"
+updateCenter(result.dir); 
+createPlanets(directions[result.dir]); // 
+
+}
+
+let p = planets.find(x => x.name === result.group)
+
+if(p){
+p.el.classList.add("highlight")
+flyToPlanet(p)
+}else{
+
+setTimeout(()=>{
+
+let p2 = planets.find(x => x.name === result.group)
+
+if(p2){
+p2.el.classList.add("highlight")
+flyToPlanet(p2)
+}
+
+},50)
+
+}
+
+})
+
+function flyToPlanet(p){
+
+vel = 0; // Сбрасываем вращение, чтобы планета дождалась камеру!
+
+let x = Math.cos(p.angle) * p.radius
+let y = Math.sin(p.angle) * p.radius
+
+// По умолчанию центрируем ровно по центру экрана
+let yOffset = 0;
+
+// Если открыта клавиатура — смещаем фокус ВВЕРХ
+if (document.activeElement === searchInput) {
+    
+    
+    yOffset = h * 0.25; 
+}
+
+camTargetX = -x
+camTargetY = -y - yOffset
+
+camMoving = true
+
+}
+
+
+container.addEventListener("click",e=>{
+
+if(!e.target.classList.contains("planet")) return
+
+let name=e.target.innerText
+
+// НОВОЕ: Если кликнули на Общие документы — сразу показываем их файлы
+if (name === "Общие документы") {
+showFiles(name);
+return;
+}
+
+if(mode==="directions"){
+vel = 0;
+
+mode="groups"
+updateCenter(name); 
+createPlanets(directions[name]); 
+
+return
+
+}
+
+let p=planets.find(x=>x.name===name)
+
+if(p){
+flyToPlanet(p)
+showFiles(name)
+}
+
+})
+
+document.getElementById("distant-sun").onclick = () => {
+    resetHome();
+    searchInput.value = "";
+};
+
+
+let drag=false
+let vel=0
+
+window.addEventListener("pointerdown",()=>drag=true)
+window.addEventListener("pointerup",()=>drag=false)
+
+window.addEventListener("pointermove",e=>{
+
+mouseX = (e.clientX - w/2) / w
+mouseY = (e.clientY - h/2) / h
+
+if(!drag)return
+
+// Ограничиваем скорость, чтобы нельзя было раскрутить слишком сильно
+let delta = e.movementX * 0.00015;
+vel = Math.min(Math.max(vel + delta, -0.025), 0.025);
+
+})
+
+let zoom=1
+let camTargetX = 0
+let camTargetY = 0
+let camMoving = false
+
+let mouseX = 0
+let mouseY = 0
+
+window.addEventListener("wheel",e=>{
+
+zoom += e.deltaY * -0.001
+
+if(!isFinite(zoom)) zoom = 1
+
+zoom = Math.min(Math.max(.5,zoom),2)
+
+container.style.transform =
+`translate(${container._tx}px, ${container._ty}px) scale(${zoom})`
+
+})
+
+// === МОБИЛЬНЫЙ ЗУМ (ЩИПОК ДВУМЯ ПАЛЬЦАМИ) ===
+let initialDistance = null;
+let initialZoom = 1;
+
+window.addEventListener("touchstart", e => {
+    if (e.touches.length === 2) {
+        // Вычисляем расстояние между двумя пальцами при касании
+        initialDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialZoom = zoom;
+    }
+});
+
+window.addEventListener("touchmove", e => {
+    if (e.touches.length === 2 && initialDistance) {
+        let currentDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        
+        let scale = currentDistance / initialDistance;
+        zoom = initialZoom * scale;
+        
+        zoom = Math.min(Math.max(.5, zoom), 2);
+        
+        container.style.transform = 
+        `translate(${container._tx}px, ${container._ty}px) scale(${zoom})`;
+    }
+}, { passive: true }); // passive: true немного ускоряет обработку свайпов
+
+window.addEventListener("touchend", e => {
+    // Сбрасываем начальное расстояние, если пальцев меньше двух
+    if (e.touches.length < 2) {
+        initialDistance = null;
+    }
+});
+
+
+function draw(){
+
+// Вызываем следующий кадр
+requestAnimationFrame(draw);
+
+
+galaxyRotation += 0.00015
+
+dustRotation += 0.00025
+
+
+dustLayer.style.transform = `translate(${mouseX*40}px, ${mouseY*40}px) rotate(${dustRotation}rad)`
+
+ 
+
+for(let i=0;i<starList.length;i++){
+
+let s=starList[i]
+
+s._o += (Math.random()-.5)*.05;
+if (s._o < 0.2) s._o = 0.2;
+else if (s._o > 1) s._o = 1;
+
+
+if (Math.abs((s._lastO || 0) - s._o) > 0.05) {
+    s.setAttribute("opacity", s._o.toFixed(2));
+    s._lastO = s._o;
+}
+
+// Двигаем звезды только если есть скорость (vel)
+if (Math.abs(vel) > 0.0001) {
+    s._x += vel * 200 * s._parallax;
+    if(s._x > w) s._x = 0;
+    if(s._x < 0) s._x = w;
+    s.setAttribute("cx", s._x);
+}
+
+}
+
+
+for(let i=0;i<planets.length;i++){
+
+let p=planets[i]
+
+p.angle += p.speed + vel
+
+let centerX = p.centerX ?? cx
+let centerY = p.centerY ?? cy
+
+let x = centerX + Math.cos(p.angle)*p.radius
+let y = centerY + Math.sin(p.angle)*p.radius
+
+p.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${p.el._hoverScale})`;
+
+p.el._x = x;
+p.el._y = y;
+
+}
+
+// движение астероидных колец
+for(let r of rings){
+    let px, py;
+    
+    if (r.isCentral) {
+        px = cx; // Центральное кольцо привязано к центру экрана
+        py = cy;
+    } else {
+        let planetObj = planets.find(p => p.el === r.planet);
+        if(!planetObj) continue;
+        px = planetObj._x || planetObj.el._x || 0;
+        py = planetObj._y || planetObj.el._y || 0;
+    }
+
+    for(let a of r.asteroids){
+        a.angle += a.speed || 0.005;
+
+        let x = px + Math.cos(a.angle) * a.radius;
+        let y = py + Math.sin(a.angle) * a.radius * a.tilt;
+
+        let offset = a.s ? (a.s / 2) : 1;
+        a.el.style.transform = `translate(${x - offset}px, ${y - offset}px)`;
+        
+        
+        if (Math.sin(a.angle) > 0) {
+            a.el.style.zIndex = "15"; 
+        } else {
+            a.el.style.zIndex = "5";
+        }
+    }
+
+}
+
+
+
+if(camMoving){
+    let dx = camTargetX - container._tx;
+    let dy = camTargetY - container._ty;
+
+    // Ускорили полет камеры на 50% (было 0.08)
+    container._tx += dx * 0.12;
+    container._ty += dy * 0.12;
+
+ 
+    let camSpeed = Math.hypot(dx, dy); 
+    
+    let blurAmount = Math.min(camSpeed * 0.015, 4); 
+    
+    container.style.filter = `blur(${blurAmount}px)`;
+    orbitLayer.style.filter = `blur(${blurAmount}px)`;
+
+    
+    if(Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5){
+        camMoving = false;
+        container.style.filter = "none"; 
+        orbitLayer.style.filter = "none";
+    }
+} else {
+    
+    container.style.filter = "none";
+    orbitLayer.style.filter = "none";
+}
+
+
+let camTransform = `translate(${container._tx}px, ${container._ty}px) scale(${zoom})`;
+
+container.style.transform = camTransform;
+orbitLayer.style.transform = `${camTransform} rotate(${galaxyRotation}rad)`;
+
+
+
+vel*=0.96
+
+
+}
+
+// Единая функция для возврата в главное меню
+function goBack() {
+    resetHome();
+    searchInput.value = "";
+}
+
+
+
+document.getElementById("distant-sun").onclick = goBack;
+
+draw()
+
+</script>
+
+</body>
+</html>
