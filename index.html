@@ -124,22 +124,24 @@ opacity:0; /* Прячем подсказку при клике */
     align-items: center;
     justify-content: center;
     text-align: center;
-        padding: 6px;
+    padding: 6px;
     color: #fff;
-    /* Manrope — современный, геометричный и необычный */
+   
     font-family: 'Manrope', sans-serif;
     font-weight: 800;
     font-size: clamp(10px, 2.6vw, 13px); 
     letter-spacing: -0.01em;
 
-
     text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
     cursor: pointer;
     pointer-events: auto;
-    will-change: transform; 
-    backface-visibility: hidden;
     z-index: 10;
     box-shadow: inset -8px -12px 18px rgba(0,0,0,.6), inset 6px 8px 14px rgba(255,255,255,.15), 0 0 12px rgba(255,210,120,.25), 0 0 35px rgba(255,140,40,.2), 0 0 80px rgba(255,80,30,.12);
+    
+    /* улучшенное сглаживание шрифтов на ПК */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
 }
 
 
@@ -373,54 +375,32 @@ filter:blur(6px);
 
 /* === Спутники-подсказки (луны) === */
 .satellites-ring {
-
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 140%; /* Орбита чуть шире самой планеты */
+    width: 140%; 
     height: 140%;
     transform: translate(-50%, -50%);
     pointer-events: none;
     border-radius: 50%;
-    border: 1px dashed rgba(255,255,255,0.15); /* Еле заметная линия орбиты */
+    border: 1px dashed rgba(255,255,255,0.15); 
+    
+    /* Убираем мерцание при вращении кольца (anti-aliasing) */
+    backface-visibility: hidden;
+    will-change: transform;
 }
 
 .satellite {
     position: absolute;
     width: 3px;
     height: 3px;
-    background: #bfdbfe; /* Светло-голубой цвет луны */
+    background: #bfdbfe; 
     border-radius: 50%;
-    box-shadow: 0 0 6px #60a5fa, 0 0 12px #3b82f6; /* Эффект свечения */
+    box-shadow: 0 0 6px #60a5fa, 0 0 12px #3b82f6; 
     transform: translate(-50%, -50%);
-}
-
-@keyframes spinRing {
-    from { transform: translate(-50%, -50%) rotate(0deg); }
-    to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-/* === Спутники-подсказки (луны) === */
-.satellites-ring {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 140%; /* Орбита чуть шире самой планеты */
-    height: 140%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    border-radius: 50%;
-    border: 1px dashed rgba(255,255,255,0.15); /* Еле заметная линия орбиты */
-}
-
-.satellite {
-    position: absolute;
-    width: 3px;
-    height: 3px;
-    background: #bfdbfe; /* Светло-голубой цвет луны */
-    border-radius: 50%;
-    box-shadow: 0 0 6px #60a5fa, 0 0 12px #3b82f6; /* Эффект свечения */
-    transform: translate(-50%, -50%);
+    
+    /* Сглаживание краев для мелких светящихся объектов */
+    backface-visibility: hidden; 
 }
 
 @keyframes spinRing {
@@ -436,6 +416,7 @@ width:100vw;
 height:100%;
 pointer-events:none;
 transform-origin:center center; /* Разрешаем орбитам зумиться вместе с галактикой */
+will-change: transform, filter;
 }
 
 /* Анимация "бегущих" пунктиров по орбитам */
@@ -473,6 +454,7 @@ height:100%;
 pointer-events:none;
 transform-origin:center center;
 z-index: 10; /* Группы всегда выше центральной планеты */
+
 }
 
 .dust-cloud{
@@ -531,19 +513,35 @@ filter:blur(60px);
     }
 }
 
-
-
-/* Анимации оптимизированы, пауза больше не нужна */
-
-
-
+/* === ЭФФЕКТ ГИПЕРПРЫЖКА === */
+#hyperspace-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100%;
+    background: #ffffff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10000;
+    transition: opacity 0.4s ease-in;
+}
+.flash-active {
+    opacity: 1 !important;
+    transition: opacity 0.1s ease-out;
+}
 </style>
+
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
+
 </head>
 
 <body>
+<div id="hyperspace-flash"></div>
 
  <input id="search" placeholder="Поиск группы...">
-<div id="signature">Галактика расписаний v1.7.3 <span class="dot">•</span> <span class="author">VinylRoads</span></div>
+<div id="signature">Галактика расписаний v1.7.5 <span class="dot">•</span> <span class="author">VinylRoads</span></div>
 
 <div id="distant-sun">ЧелГУ</div>
 
@@ -585,26 +583,31 @@ const pdfTitle = document.getElementById("pdf-title");
 const pdfDownload = document.getElementById("pdf-download");
 
 function openPDF(file){
-    // encodeURIComponent страхует нас от проблем, если диспетчер добавит спецсимволы вроде # или %
-    let url = "Расписание/" + encodeURIComponent(file);
-    let prettyName = file.replace(/_/g, " ").replace(/\.pdf$/i, "");
+    const flash = document.getElementById("hyperspace-flash");
+    flash.classList.add("flash-active");
 
-    // Скрываем плашку со списком файлов
-    document.getElementById("files").style.display = "none";
+    setTimeout(() => {
+        let url = "Расписание/" + encodeURIComponent(file);
+        let prettyName = file.replace(/_/g, " ").replace(/\.pdf$/i, "");
 
-    // Проверка на мобильные устройства
-    let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        document.getElementById("files").style.display = "none";
 
-    if (isMobile) {
-        // На мобилках отдаем файл системе (новая вкладка работает идеально)
-        window.open(url, '_blank');
-    } else {
-        // На ПК показываем внутри Галактики с красивой шапкой
-        pdfTitle.textContent = prettyName;
-        pdfDownload.href = url;
-        viewer.src = url;
-        pdfContainer.style.display = "flex";
-    }
+        let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            window.open(url, '_blank');
+        } else {
+            pdfTitle.textContent = prettyName;
+            pdfDownload.href = url;
+            viewer.src = url;
+            pdfContainer.style.display = "flex";
+        }
+
+        setTimeout(() => {
+            flash.classList.remove("flash-active");
+        }, 300);
+
+    }, 150);
 }
 
 // Кнопка закрытия
@@ -732,12 +735,12 @@ createDust()
 
 let lastWidth = window.innerWidth
 let lastHeight = window.innerHeight
+let resizeTimeout;
 
 window.addEventListener("resize",()=>{
 
 let newW = window.innerWidth
 let newH = window.innerHeight
-
 
 if(newW === lastWidth){
 lastHeight = newH
@@ -747,12 +750,15 @@ return
 lastWidth = newW
 lastHeight = newH
 
-updateSize()
-
-if(mode==="directions")
-createPlanets(Object.keys(directions))
-else
-createPlanets(directions[label.textContent])
+clearTimeout(resizeTimeout);
+resizeTimeout = setTimeout(() => {
+    updateSize()
+    
+    if(mode==="directions")
+        createPlanets(Object.keys(directions))
+    else
+        createPlanets(directions[label.textContent])
+}, 150); // Ждем 150мс после конца изменения экрана
 
 })
 
@@ -1250,9 +1256,10 @@ createPlanets(Object.keys(directions))
 updateCenter("ЧелГУ");
 
 document.getElementById("files").style.display="none"
-container._tx = 0
-container._ty = 0
-container.style.transform="translate(0px,0px) scale(1)"
+    container._tx = 0
+    container._ty = 0
+    zoom = 0.8 // Синхронизируем переменную
+    container.style.transform=`translate(0px,0px) scale(${zoom})`
 }
 
 function findGroup(query){
@@ -1428,18 +1435,22 @@ window.addEventListener("pointerup",()=>drag=false)
 
 window.addEventListener("pointermove",e=>{
 
-mouseX = (e.clientX - w/2) / w
-mouseY = (e.clientY - h/2) / h
+    mouseX = (e.clientX - w/2) / w
+    mouseY = (e.clientY - h/2) / h
 
-if(!drag)return
+    if(!drag)return
 
-// Ограничиваем скорость, чтобы нельзя было раскрутить слишком сильно
-let delta = e.movementX * 0.00015;
-vel = Math.min(Math.max(vel + delta, -0.025), 0.025);
+    // УМНОЕ УПРАВЛЕНИЕ:
+    // Если это мышь (ПК) — прямое управление (положительный множитель)
+    // Если это палец (телефон) — физическая карусель (отрицательный множитель)
+    let multiplier = (e.pointerType === "mouse") ? 0.00015 : -0.00015;
+    
+    let delta = e.movementX * multiplier;
+    vel = Math.min(Math.max(vel + delta, -0.045), 0.045); 
 
 })
 
-let zoom=1
+let zoom=0.8
 let camTargetX = 0
 let camTargetY = 0
 let camMoving = false
@@ -1549,13 +1560,15 @@ p.angle += p.speed + vel
 let centerX = p.centerX ?? cx
 let centerY = p.centerY ?? cy
 
-let x = centerX + Math.cos(p.angle)*p.radius
-let y = centerY + Math.sin(p.angle)*p.radius
+// Вычитаем halfSize сразу, убирая тяжелый двойной translate
+let x = centerX + Math.cos(p.angle)*p.radius - p.halfSize;
+let y = centerY + Math.sin(p.angle)*p.radius - p.halfSize;
 
-p.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${p.el._hoverScale})`;
+// Обычный translate без 3D, чтобы не было мерцания и лагов на Яндексе
+p.el.style.transform = `translate(${x}px, ${y}px) scale(${p.el._hoverScale})`;
 
-p.el._x = x;
-p.el._y = y;
+p.el._x = x + p.halfSize;
+p.el._y = y + p.halfSize;
 
 }
 
@@ -1580,13 +1593,15 @@ for(let r of rings){
         let y = py + Math.sin(a.angle) * a.radius * a.tilt;
 
         let offset = a.s ? (a.s / 2) : 1;
+        
+        // Обычный translate для плавности сабпикселей
         a.el.style.transform = `translate(${x - offset}px, ${y - offset}px)`;
         
-        
-        if (Math.sin(a.angle) > 0) {
-            a.el.style.zIndex = "15"; 
-        } else {
-            a.el.style.zIndex = "5";
+        // Кэшируем z-index и обновляем DOM ТОЛЬКО если значение реально изменилось
+        let targetZ = Math.sin(a.angle) > 0 ? "15" : "5";
+        if (a._currentZ !== targetZ) {
+            a.el.style.zIndex = targetZ;
+            a._currentZ = targetZ;
         }
     }
 
@@ -1598,28 +1613,35 @@ if(camMoving){
     let dx = camTargetX - container._tx;
     let dy = camTargetY - container._ty;
 
-    // Ускорили полет камеры на 50% (было 0.08)
     container._tx += dx * 0.12;
     container._ty += dy * 0.12;
 
- 
     let camSpeed = Math.hypot(dx, dy); 
-    
     let blurAmount = Math.min(camSpeed * 0.015, 4); 
     
-    container.style.filter = `blur(${blurAmount}px)`;
-    orbitLayer.style.filter = `blur(${blurAmount}px)`;
-
+    // Округляем до десятых и меняем фильтр только если он заметно изменился
+    let filterStr = blurAmount > 0.1 ? `blur(${blurAmount.toFixed(1)}px)` : "none";
     
+    if (container._currentFilter !== filterStr) {
+        container.style.filter = filterStr;
+        orbitLayer.style.filter = filterStr;
+        container._currentFilter = filterStr;
+    }
+
     if(Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5){
         camMoving = false;
-        container.style.filter = "none"; 
-        orbitLayer.style.filter = "none";
+        if (container._currentFilter !== "none") {
+            container.style.filter = "none"; 
+            orbitLayer.style.filter = "none";
+            container._currentFilter = "none";
+        }
     }
 } else {
-    
-    container.style.filter = "none";
-    orbitLayer.style.filter = "none";
+    if (container._currentFilter !== "none" && container._currentFilter !== undefined) {
+        container.style.filter = "none";
+        orbitLayer.style.filter = "none";
+        container._currentFilter = "none";
+    }
 }
 
 
@@ -1648,6 +1670,28 @@ document.getElementById("distant-sun").onclick = goBack;
 draw()
 
 </script>
+
+
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=107728572', 'ym');
+
+    ym(107728572, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/107728572" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+
+
+
+
+
 
 </body>
 </html>
